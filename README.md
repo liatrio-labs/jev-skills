@@ -23,6 +23,18 @@ npx skills add typesafe-ai/skills --skill typesafe-ai
 
 Select your agent when prompted. Installation is project-local by default; add `-g` to install globally.
 
+### Cursor
+
+Opening this repo loads both skills through `.cursor/skills/` (symlinks to `skills/jev` and `skills/typesafe-ai`). In Agent chat, type `/jev`.
+
+To install into another project, or globally with `-g`:
+
+```bash
+npx skills add liatrio-labs/jev-skills --skill jev --skill typesafe-ai --agent cursor -y
+```
+
+`npx skills add` writes Cursor project skills to `.agents/skills/` and global skills to `~/.cursor/skills/`. See [BRIAN-HOWTO.md](BRIAN-HOWTO.md) for the Grok-bot path, the TypeSafe console key, and the exact steps.
+
 See the [installation guide](https://docs.typesafe.ai/agent-skill#installation) for a prompt to copy to your agent, manual installation, and updates.
 
 ## Use
@@ -35,6 +47,7 @@ In Claude Code, you can explicitly invoke the plugin skill with `/typesafe:types
 
 | Skill | Purpose |
 |---|---|
+| [jev](skills/jev/SKILL.md) | Call Jev to classify, route, score, or decide. Reads `TYPESAFE_API_KEY` from the environment. |
 | [typesafe-ai](skills/typesafe-ai/SKILL.md) | Design TypeSafe workflows, find current docs and cookbooks, and compose typed judgments in code |
 
 ## License
