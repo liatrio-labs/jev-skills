@@ -38,38 +38,65 @@ Path A does not use these names. Robert's bot uses the Vercel connector's key. T
 
 ### Install the skills into Cursor
 
-Cursor discovers skills in `.cursor/skills/` and `.agents/skills/` inside a project, and in `~/.cursor/skills/` for you personally. It does not auto-load a top-level `skills/` directory. This repo symlinks both skills into `.cursor/skills/` so opening the repo is enough.
+Anvil confirmed there is no existing Jev-to-Cursor pattern to extend. Your machine already has a skills home. Use that.
 
-After this branch is on your machine:
+**Preferred target:** [BriWalsh/cursor-user-skills](https://github.com/BriWalsh/cursor-user-skills). Production skills sit one folder per skill at that repo's root (`eyes/SKILL.md`, `eod-drafter/SKILL.md`, `follow-up-radar/SKILL.md`). [BriWalsh/brwalsh](https://github.com/BriWalsh/brwalsh) `.cursor/install-skills.sh` clones that repo and rsyncs the root, excluding `.git` and `README.md`, into both `~/.cursor/skills` and `~/.agents/skills`. Cloud Agents discover skills only from disk at startup, so the folders have to be on `main` before the next agent starts. Do not run `bots/docs/promote-to-user-skills.sh` for this. That script only promotes the ops kit.
 
-1. Clone or pull, then open the folder in Cursor.
-2. Open a new Agent chat.
-3. Type `/jev` or ask it to classify, route, score, or decide with Jev.
-4. Confirm both skills under Customize, then Skills. You should see `jev` and `typesafe-ai`.
+This agent's token cannot read `cursor-user-skills` (private; clone returns "repository not found"). The steps below follow the public layout in [bots/docs/install-notes.md](https://github.com/BriWalsh/brwalsh/blob/main/bots/docs/install-notes.md) and [`.cursor/install-skills.sh`](https://github.com/BriWalsh/brwalsh/blob/main/.cursor/install-skills.sh).
 
-To install them into a different project, from that project:
+1. Clone this branch of `liatrio-labs/jev-skills` and your private skills repo:
+
+   ```bash
+   git clone --branch cursor/brian-jev-howto-1e46 --depth 1 \
+     https://github.com/liatrio-labs/jev-skills.git
+   git clone git@github.com:BriWalsh/cursor-user-skills.git
+   cd cursor-user-skills
+   git checkout -b cursor/add-jev-skills
+   ```
+
+   After this how-to merges, `main` of `jev-skills` is fine instead of the branch.
+
+2. Copy the two skill folders to the root. The folder name must match `name` in `SKILL.md`. Copy no `.env` and no key.
+
+   ```bash
+   if [ -e jev ] || [ -e typesafe-ai ]; then
+     echo "jev or typesafe-ai already exists. Stop and look before replacing."
+     exit 1
+   fi
+   cp -R ../jev-skills/skills/jev .
+   cp -R ../jev-skills/skills/typesafe-ai .
+   test -f jev/SKILL.md && test -f typesafe-ai/SKILL.md
+   git add jev typesafe-ai
+   git status
+   ```
+
+3. Commit and push that branch, then open the PR on `cursor-user-skills` yourself. `install-skills.sh` clones `main` with `--depth 1`, so Cloud Agents pick the skills up only after that PR is merged.
+
+4. On your laptop, before or after merge, install the same tree into the directories Cursor reads. From the `cursor-user-skills` clone that already contains `jev/` and `typesafe-ai/`:
+
+   ```bash
+   for dest in "$HOME/.cursor/skills" "$HOME/.agents/skills"; do
+     mkdir -p "$dest"
+     rsync -a --exclude '.git' --exclude 'README.md' ./ "$dest"/
+   done
+   find "$HOME/.cursor/skills/jev" "$HOME/.cursor/skills/typesafe-ai" -name SKILL.md
+   ```
+
+   This rsync does not pass `--delete`. The Cloud Agent script does. Run that script only from a full `main` checkout, or a partial tree will remove the ops-kit skills.
+
+   After the folders are on `main`, `brwalsh`'s `.cursor/install-skills.sh` does this same rsync on each Cloud Agent VM. It needs a `GH_TOKEN` that can read the private repo, or the Cursor GitHub app already granted that access. The script strips the token from the clone remote after a successful authenticated clone.
+
+5. Open a new Agent chat. Type `/jev`. Under Customize, then Skills, you should see `jev` and `typesafe-ai`.
+
+Opening **this** repo also loads both skills, because `.cursor/skills/jev` and `.cursor/skills/typesafe-ai` are symlinks. That only covers work inside `jev-skills`. The user-skills repo is what your other projects and Cloud Agents use.
+
+Other projects can still install from here without your private repo:
 
 ```bash
 npx skills add liatrio-labs/jev-skills --skill jev --skill typesafe-ai --agent cursor -y
 ```
 
-That writes `.agents/skills/`, which Cursor loads for that project. For every project on your machine:
-
-```bash
-npx skills add liatrio-labs/jev-skills --skill jev --skill typesafe-ai --agent cursor -g -y
-```
-
-Global installs go to `~/.cursor/skills/`. Until this branch is merged, run the same commands with `npx skills add .` from a local clone instead of `liatrio-labs/jev-skills`.
-
-The upstream TypeSafe repo is the same design skill, without the Liatrio how-to:
-
-```bash
-npx skills add typesafe-ai/skills --skill typesafe-ai --agent cursor -y
-```
-
-Use one install of `typesafe-ai`. Two copies drift.
-
-Manual copy, if you would rather not run the installer: copy `skills/jev` and `skills/typesafe-ai` into `~/.cursor/skills/`. Each folder must contain `SKILL.md`, and the folder name must match the `name` in the frontmatter (`jev`, `typesafe-ai`).
+That writes `.agents/skills/` in the current project. `-g` writes `~/.cursor/skills/`. Until this branch merges, run `npx skills add .` from a local clone. Use one copy of `typesafe-ai`. The upstream package is `npx skills add typesafe-ai/skills --skill typesafe-ai --agent cursor -y`, and a second copy drifts.
 
 ## Path A — Grok bot and the Vercel connector
 
@@ -127,7 +154,7 @@ This is the API and code path. Josh Guice's TekTok in [#liatrio-innovation](http
 
    A good response has `answers.urgency.noul` between 0 and 1, and a `model` id such as `jev-1.13.0`. `401` means the key was missing or rejected.
 
-6. Install the skills using the section above. Open this repo in Cursor, or run `npx skills add` against it.
+6. Install the skills into [BriWalsh/cursor-user-skills](https://github.com/BriWalsh/cursor-user-skills) using the section above, then rsync them into `~/.cursor/skills`. Opening this repo is only a way to try `/jev` while you review the how-to.
 7. In Agent chat, with `TYPESAFE_API_KEY` exported in the environment Cursor can see, ask:
 
    > Use the jev skill. Classify this note, route it to one team, and score urgency. Do not print the API key.
