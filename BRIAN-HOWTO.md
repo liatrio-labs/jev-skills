@@ -44,35 +44,30 @@ Anvil confirmed there is no existing Jev-to-Cursor pattern to extend. Your machi
 
 This agent's token cannot read `cursor-user-skills` (private; clone returns "repository not found"). The steps below follow the public layout in [bots/docs/install-notes.md](https://github.com/BriWalsh/brwalsh/blob/main/bots/docs/install-notes.md) and [`.cursor/install-skills.sh`](https://github.com/BriWalsh/brwalsh/blob/main/.cursor/install-skills.sh).
 
-1. Clone this branch of `liatrio-labs/jev-skills` and your private skills repo:
+Run this on a machine that can read the private repo. It copies `typesafe-ai` and `jev` to the repo root, commits, and pushes `cursor/add-jev-and-typesafe-ai`. It does not put a key in the commit. After this how-to is on `main`, you can drop the `--branch` line and clone `main` instead.
 
-   ```bash
-   git clone --branch cursor/brian-jev-howto-1e46 --depth 1 \
-     https://github.com/liatrio-labs/jev-skills.git
-   git clone git@github.com:BriWalsh/cursor-user-skills.git
-   cd cursor-user-skills
-   git checkout -b cursor/add-jev-skills
-   ```
+```bash
+git clone --branch cursor/brian-jev-howto-1e46 --depth 1 \
+  https://github.com/liatrio-labs/jev-skills.git
+git clone git@github.com:BriWalsh/cursor-user-skills.git
+cd cursor-user-skills
+git checkout -b cursor/add-jev-and-typesafe-ai
+if [ -e jev ] || [ -e typesafe-ai ]; then
+  echo "jev or typesafe-ai already exists. Stop and look before replacing."
+  exit 1
+fi
+cp -R ../jev-skills/skills/typesafe-ai .
+cp -R ../jev-skills/skills/jev .
+test -f typesafe-ai/SKILL.md && test -f jev/SKILL.md
+git add typesafe-ai jev
+git commit -m "Add typesafe-ai and jev Cursor skills"
+git push -u origin cursor/add-jev-and-typesafe-ai
+echo "Open: https://github.com/BriWalsh/cursor-user-skills/compare/main...cursor/add-jev-and-typesafe-ai?expand=1"
+```
 
-   After this how-to merges, `main` of `jev-skills` is fine instead of the branch.
+`install-skills.sh` clones `main` with `--depth 1`, so Cloud Agents pick the skills up only after that PR is merged. The folder name must match `name` in `SKILL.md`.
 
-2. Copy the two skill folders to the root. The folder name must match `name` in `SKILL.md`. Copy no `.env` and no key.
-
-   ```bash
-   if [ -e jev ] || [ -e typesafe-ai ]; then
-     echo "jev or typesafe-ai already exists. Stop and look before replacing."
-     exit 1
-   fi
-   cp -R ../jev-skills/skills/jev .
-   cp -R ../jev-skills/skills/typesafe-ai .
-   test -f jev/SKILL.md && test -f typesafe-ai/SKILL.md
-   git add jev typesafe-ai
-   git status
-   ```
-
-3. Commit and push that branch, then open the PR on `cursor-user-skills` yourself. `install-skills.sh` clones `main` with `--depth 1`, so Cloud Agents pick the skills up only after that PR is merged.
-
-4. On your laptop, before or after merge, install the same tree into the directories Cursor reads. From the `cursor-user-skills` clone that already contains `jev/` and `typesafe-ai/`:
+On your laptop, before or after merge, install the same tree into the directories Cursor reads. From the `cursor-user-skills` clone that already contains `jev/` and `typesafe-ai/`:
 
    ```bash
    for dest in "$HOME/.cursor/skills" "$HOME/.agents/skills"; do
@@ -86,7 +81,7 @@ This agent's token cannot read `cursor-user-skills` (private; clone returns "rep
 
    After the folders are on `main`, `brwalsh`'s `.cursor/install-skills.sh` does this same rsync on each Cloud Agent VM. It needs a `GH_TOKEN` that can read the private repo, or the Cursor GitHub app already granted that access. The script strips the token from the clone remote after a successful authenticated clone.
 
-5. Open a new Agent chat. Type `/jev`. Under Customize, then Skills, you should see `jev` and `typesafe-ai`.
+Open a new Agent chat. Type `/jev`. Under Customize, then Skills, you should see `jev` and `typesafe-ai`.
 
 Opening **this** repo also loads both skills, because `.cursor/skills/jev` and `.cursor/skills/typesafe-ai` are symlinks. That only covers work inside `jev-skills`. The user-skills repo is what your other projects and Cloud Agents use.
 
